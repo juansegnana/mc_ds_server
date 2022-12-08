@@ -51,7 +51,7 @@ class Server {
   }
 
   async changeServerState(state: TServerState) {
-    const { data, status } = await this.axios.post(
+    const { status } = await this.axios.post(
       `client/servers/${this.serverId}/power`,
       { signal: state }
     );
@@ -61,7 +61,8 @@ class Server {
       ". Response Code:",
       status
     );
-    return { data, status };
+    const SUCCESSFUL_STATUS = 204;
+    return status === SUCCESSFUL_STATUS;
   }
 
   async sendCommand(command: string) {

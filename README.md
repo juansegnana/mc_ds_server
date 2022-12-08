@@ -1,23 +1,31 @@
-# Node.js with TS - Minimal Template 
+# MC Server Controller Discord Bot
+
+Made with TS, Discord.js
 
 ## Commands
 
-- Install dependencies
+Install dependencies
 
 ```bash
 yarn install
 ```
 
-- Develop
+Run develop
 
 ```bash
 yarn start:dev
 ```
 
-- Build for production
+Build for production
 
 ```bash
 yarn build
 ```
 
-**Date**: 2022-12-07
+Refresh slash commands in Server
+
+```bash
+yarn refresh:slash
+```
+
+**Date**: 2022-12-08
