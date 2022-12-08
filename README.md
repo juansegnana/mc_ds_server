@@ -29,3 +29,5 @@ yarn refresh:slash
 ```
 
 **Date**: 2022-12-08
+
+Docs reference: https://dashflo.net/docs/api/pterodactyl/v1/#req_395b45b3381643ebaed7ee23a9a356f3
