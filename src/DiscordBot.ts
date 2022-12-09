@@ -1,5 +1,5 @@
 import fs from "fs";
-import path from "node:path";
+import path from "path";
 // Require the necessary discord.js classes
 import {
   Client,

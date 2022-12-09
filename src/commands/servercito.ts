@@ -1,4 +1,4 @@
-import { SlashCommandBuilder, EmbedBuilder } from "discord.js";
+import { SlashCommandBuilder } from "discord.js";
 import Server from "../MCServer";
 import { SlashCommand } from "../types";
 
