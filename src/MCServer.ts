@@ -1,6 +1,11 @@
-import Consumer from './Consumer'
+import Consumer from "./Consumer";
 
-import { Attributes, IServerDetails, IServerResources } from './types'
+import {
+  Attributes,
+  IFileList,
+  IServerDetails,
+  IServerResources,
+} from "./types";
 
 type TServerState = "start" | "stop" | "restart" | "kill";
 
@@ -23,10 +28,11 @@ class Server {
       throw new Error("Missing environment variables!");
     }
 
-    this.shouldDebug && console.log("[Server] Loaded environment variables: ", {
-      serverUrl: this.serverUrl,
-      serverId: this.serverId,
-    });
+    this.shouldDebug &&
+      console.log("[Server] Loaded environment variables: ", {
+        serverUrl: this.serverUrl,
+        serverId: this.serverId,
+      });
 
     this.axios = new Consumer({
       serverUrl: this.serverUrl,
@@ -55,12 +61,13 @@ class Server {
       `client/servers/${this.serverId}/power`,
       { signal: state }
     );
-    this.shouldDebug && console.log(
-      "[Server] NEW Server State: ",
-      state,
-      ". Response Code:",
-      status
-    );
+    this.shouldDebug &&
+      console.log(
+        "[Server] NEW Server State: ",
+        state,
+        ". Response Code:",
+        status
+      );
     const SUCCESSFUL_STATUS = 204;
     return status === SUCCESSFUL_STATUS;
   }
@@ -70,7 +77,8 @@ class Server {
       `client/servers/${this.serverId}/command`,
       { command }
     );
-    this.shouldDebug && console.log("[Server] Command: ", command, ". Response Code:", status);
+    this.shouldDebug &&
+      console.log("[Server] Command: ", command, ". Response Code:", status);
     return data;
   }
 
@@ -79,6 +87,31 @@ class Server {
     const state = data.attributes.current_state;
     this.shouldDebug && console.log("[Server] Server State: ", state);
     return state;
+  }
+
+  async listFiles(): Promise<IFileList> {
+    const { data } = await this.axios.get<IFileList>(
+      `client/servers/${this.serverId}/files/list?directory=%2Fcache`
+    );
+    return data;
+  }
+
+  async getUploadFileUrl(): Promise<string> {
+    const { data } = await this.axios.get<{
+      object: string;
+      attributes: { url: string };
+    }>(`client/servers/${this.serverId}/files/upload`);
+    return `${data.attributes.url}`;
+  }
+
+  async uploadMod(fileName: string, fileUrl: string): Promise<boolean> {
+    const endpoint = `client/servers/${this.serverId}/files/write`; // await this.getUploadFileUrl();
+    const { data, status } = await this.axios.uploadFile(
+      endpoint,
+      fileName,
+      fileUrl
+    );
+    return status !== 400;
   }
 }
 
