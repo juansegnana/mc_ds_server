@@ -2,16 +2,6 @@ import { SlashCommandBuilder } from "discord.js";
 import { SlashCommand } from "../types";
 
 const command: SlashCommand = {
-  // execute: interaction => {
-  //     interaction.reply({
-  //         embeds: [
-  //             new EmbedBuilder()
-  //             .setAuthor({name: "MRC License"})
-  //             .setDescription(`🏓 Pong! \n 📡 Ping: ${interaction.client.ws.ping}`)
-  //             // .setColor(getThemeColor("text"))
-  //         ]
-  //     })
-  // },
   data: new SlashCommandBuilder()
     .setName("ping")
     .setDescription("Shows the bot's ping"),
@@ -21,5 +11,6 @@ const command: SlashCommand = {
     );
   },
 };
+
 // Export
 export = command;

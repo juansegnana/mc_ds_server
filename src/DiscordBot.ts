@@ -1,21 +1,20 @@
 import fs from "fs";
 import path from "path";
-// Require the necessary discord.js classes
-import {
-  ActivityType,
-  Client,
-  Collection,
-  Events,
-  GatewayIntentBits,
-} from "discord.js";
+
+import { Client, Collection, Events, GatewayIntentBits } from "discord.js";
 
 import { Command } from "./types";
-import Server from "./MCServer";
+import updateBotPresence from "./helpers/updateBotPresence";
+import startCronJobs from "./jobs";
 
 const BOT_TOKEN = process.env.DISCORD_BOT_TOKEN;
+const adminUserIds: string[] = (process.env.ADMIN_USER_IDS ?? "")
+  ?.split(",")
+  .map((x) => `${x}`.trim())
+  .filter((x) => x);
 
-if (!BOT_TOKEN) {
-  throw new Error("BOT_TOKEN is not defined");
+if (!BOT_TOKEN || !adminUserIds.length) {
+  throw new Error("Discord envs are missing. Check `.env.sample` file!");
 }
 
 class DiscordClient extends Client {
@@ -54,34 +53,17 @@ for (const file of commandFiles) {
 // We use 'c' for the event parameter to keep it separate from the already defined 'client'
 client.once(Events.ClientReady, (c) => {
   console.log(
-    `Ready! Logged in as ${c.user.tag}. In guilds: ${c.guilds.cache
+    `Ready! Logged in as "${c.user.tag}". In guilds:\n${c.guilds.cache
       .map((g) => g.id)
-      .join(", ")}`
+      .join("\n")}`
   );
-  updateBotActivity();
+  updateBotPresence(c);
 });
-
-async function updateBotActivity() {
-  const server = new Server();
-  const serverState = await server.getServerState();
-  console.log(`Updating server status. Current status is ${serverState}`);
-  client.user?.setPresence({
-    activities: [
-      {
-        name: `Estado server: ${serverState}`,
-        type: ActivityType.Listening,
-      },
-    ],
-  });
-}
-
-// Each 5 minutes, update MC server status
-setInterval(() => updateBotActivity(), 1000 * 60 * 5);
 
 client.on(Events.InteractionCreate, async (interaction) => {
   if (!interaction.isChatInputCommand()) return;
   const command = interaction.client.commands.get(interaction.commandName);
-  // console.log('getting...', interaction.client.commands.forEach((c) => console.log(c.name)));
+
   if (!command) {
     console.error(
       `No command matching "${interaction.commandName}" was found.`
@@ -89,12 +71,28 @@ client.on(Events.InteractionCreate, async (interaction) => {
     return;
   }
 
+  // Check if interaction is from a bot or is not an user allowed (adminUserIds)
+  if (interaction.user.bot || !adminUserIds.includes(interaction.user.id)) {
+    console.log(`[ds-bot] User ${interaction.user.id} tried to use a command!`);
+    await interaction.reply({
+      content: "No tienes permisos para ejecutar este comando!",
+      ephemeral: true,
+    });
+    return;
+  }
+
   try {
     await command.execute(interaction);
   } catch (error) {
-    console.error(error);
+    console.log(
+      `[ds-bot] Error executing command "${
+        interaction.commandName
+      }". Details: "${JSON.stringify(error)}"`
+    );
     await interaction.reply({
-      content: "There was an error while executing this command!",
+      content: `Hubo un error ejecutando el comando! Detalles: "${JSON.stringify(
+        error
+      )}"`,
       ephemeral: true,
     });
   }
@@ -102,3 +100,4 @@ client.on(Events.InteractionCreate, async (interaction) => {
 
 // Log in to Discord with your client's token
 client.login(BOT_TOKEN);
+startCronJobs(client);

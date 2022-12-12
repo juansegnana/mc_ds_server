@@ -1,5 +1,5 @@
 import { SlashCommandBuilder } from "discord.js";
-import Server from "../MCServer";
+import handleServerChandeState from "../helpers/handleServerChangeState";
 import { SlashCommand } from "../types";
 
 const command: SlashCommand = {
@@ -7,20 +7,19 @@ const command: SlashCommand = {
     .setName("start")
     .setDescription(`Arranca servidor de MC`),
   async execute(interaction) {
-    const server = new Server();
-    const serverDetails = await server.getServerState();
+    await interaction.reply("Arrancando servidor...");
+    const response = await handleServerChandeState(interaction.client, "start");
+    let message: string = "...";
 
-    let message = "Cargando...";
-
-    if (serverDetails === "offline") {
-      await server.changeServerState('start');
-      message = `El servidor está arrancando, esperá entre 1-2 minutos`;
+    if (response) {
+      message = `El servidor está arrancando, esperá ~1 minuto`;
     } else {
-      message = `El servidor ya está en modo: "${serverDetails}"`;
+      message = `El servidor ya está arrancando o prendido`;
     }
 
-    await interaction.reply(message);
+    await interaction.editReply(message);
   },
 };
+
 // Export
 export = command;
