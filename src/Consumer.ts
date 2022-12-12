@@ -79,29 +79,20 @@ class Consumer implements IConsumer {
     const SERVER_FILE_PATH = `${endpoint}?file=${encodeURIComponent(
       `mods/${fileName}`
     )}`;
-    console.log('SERVER_FILE_PATH', SERVER_FILE_PATH)
+    console.log("SERVER_FILE_PATH", SERVER_FILE_PATH);
 
     let response = { data: {}, status: 400 };
     try {
       const buffer = await readFile(filePath);
       const fileContent = buffer.toString();
-      // const { data, status } = await axios.post<Record<string, any>>(
-      //   endpoint,
-      //   formData,
-      //   {
-      //     headers: {
-      //       ...formData.getHeaders(),
-      //       // file: createReadStream(filePath),
-      //       "Content-Type": "multipart/form-data",
-      //     },
-      //   }
-      // );
+
       const { data, status } = await this.post<Record<string, any>>(
         SERVER_FILE_PATH,
         {
           body: fileContent,
         }
       );
+
       response = { data, status };
     } catch (e) {
       console.error(`Error uploading file: "${fileName}". Error: ${e}`);

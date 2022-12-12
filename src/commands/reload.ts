@@ -1,5 +1,5 @@
 import { SlashCommandBuilder } from "discord.js";
-import Server from "../MCServer";
+import handleServerChandeState from "../helpers/handleServerChangeState";
 import { SlashCommand } from "../types";
 
 const command: SlashCommand = {
@@ -7,20 +7,22 @@ const command: SlashCommand = {
     .setName("reload")
     .setDescription(`Reiniciar servidor de MC`),
   async execute(interaction) {
-    const server = new Server();
-    const serverDetails = await server.getServerState();
+    await interaction.reply("Recargando servidor...");
+    const response = await handleServerChandeState(
+      interaction.client,
+      "restart"
+    );
+    let message: string = "...";
 
-    let message = "Cargando...";
-
-    if (serverDetails === "running") {
-      await server.changeServerState("restart");
-      message = `El servidor se está reiniciando, suele tomar 1-2 minutos.`;
+    if (response) {
+      message = `El servidor se está reinciando, esperá ~1 minuto`;
     } else {
-      message = `El servidor no se esta ejecutando, estado actual: "${serverDetails}"`;
+      message = `El servidor no está prendido!`;
     }
 
-    await interaction.reply(message);
+    await interaction.editReply(message);
   },
 };
+
 // Export
 export = command;

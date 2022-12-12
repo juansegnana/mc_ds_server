@@ -7,7 +7,7 @@ import {
   IServerResources,
 } from "./types";
 
-type TServerState = "start" | "stop" | "restart" | "kill";
+export type TServerState = "start" | "stop" | "restart" | "kill";
 
 type TServerCurrentState = Attributes["current_state"];
 
