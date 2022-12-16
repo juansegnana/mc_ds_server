@@ -33,7 +33,7 @@ const command: SlashCommand = {
     const response = await server.changeServerState(actionValue);
 
     await interaction.reply(
-      `Mandé el comando ${actionValue} al server! Respuesta: \`${response}\`.`
+      `Mandé el comando \`${actionValue}\` al server! Respuesta: \`${response}\`.`
     );
   },
 };
