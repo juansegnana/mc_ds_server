@@ -1,6 +1,6 @@
 import { SlashCommandBuilder } from "discord.js";
 import handleServerChandeState from "../helpers/handleServerChangeState";
-import { TServerState } from "../MCServer";
+import Server, { TServerState } from "../MCServer";
 import { SlashCommand } from "../types";
 
 const command: SlashCommand = {
@@ -27,12 +27,14 @@ const command: SlashCommand = {
     }
     const { name, type, value } = action;
     const actionValue = value as "start" | "stop" | "restart";
-    // unknown as Pick<
-    //   TServerState,
-    //   "start" | "stop" | "restart"
-    // >;
     console.log(`interaction option log: [${name}, ${type}, ${value}]`);
-    await interaction.reply(`ok. your value is "${actionValue}"`);
+
+    const server = new Server();
+    const response = await server.changeServerState(actionValue);
+
+    await interaction.reply(
+      `Mandé el comando ${actionValue} al server! Respuesta: \`${response}\`.`
+    );
   },
 };
 
