@@ -5,7 +5,7 @@ import { Client, Collection, Events, GatewayIntentBits } from "discord.js";
 
 import { Command } from "./types";
 import updateBotPresence from "./helpers/updateBotPresence";
-import startCronJobs from "./jobs";
+// import startCronJobs from "./jobs";
 
 const BOT_TOKEN = process.env.DISCORD_BOT_TOKEN;
 const adminUserIds: string[] = (process.env.ADMIN_USER_IDS ?? "")
@@ -100,4 +100,4 @@ client.on(Events.InteractionCreate, async (interaction) => {
 
 // Log in to Discord with your client's token
 client.login(BOT_TOKEN);
-startCronJobs(client);
+// startCronJobs(client);

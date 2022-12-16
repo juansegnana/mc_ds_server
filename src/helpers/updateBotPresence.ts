@@ -7,9 +7,9 @@ async function updateBotPresence(
   checkServerState = true
 ) {
   let serverState = "";
-  if (!checkServerState) {
+  if (checkServerState) {
     const server = new Server();
-    const serverState = await server.getServerState();
+    serverState = await server.getServerState();
 
     if (newState && newState !== serverState) {
       console.log(
@@ -20,11 +20,13 @@ async function updateBotPresence(
     console.log(`Updating server status. Current status is ${serverState}`);
   }
 
+  const finalState = newState ?? serverState;
+
   cl.user?.setPresence({
     activities: [
       {
-        name: `${newState ?? serverState}`,
-        type: ActivityType.Playing,
+        name: `${finalState}`,
+        type: ActivityType.Listening,
       },
     ],
   });
