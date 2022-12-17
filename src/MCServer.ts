@@ -113,6 +113,16 @@ class Server {
     );
     return status !== 400;
   }
+
+  // Backup
+  // async backupWorld(): Promise<boolean> {
+  //   const fileUploaded = await this.axios.post(`client/servers/${this.serverId}/files/compress`, {
+  //     root: "/",
+  //     files: ["world"],
+  //   });
+
+  //   return true;
+  // }
 }
 
 export default Server;

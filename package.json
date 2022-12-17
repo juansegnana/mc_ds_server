@@ -9,6 +9,8 @@
     "dev": "nodemon src/index.ts",
     "start:dev": "npx nodemon",
     "start": "yarn build && node build/index.js",
+    "prodStart": "./run.sh",
+    "prodBuild": "./build.sh",
     "refresh:slash": "yarn build && node build/scripts/registerSlashes.js"
   },
   "devDependencies": {
