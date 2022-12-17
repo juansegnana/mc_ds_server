@@ -10,7 +10,7 @@
     "start:dev": "npx nodemon",
     "start": "yarn build && node build/index.js",
     "prodStart": "$PWD/run.sh",
-    "prodBuild": "chmod +x $PWD/build.sh $PWD/run.sh && $PWD/build.sh",
+    "prodBuild": "$PWD/build.sh",
     "refresh:slash": "yarn build && node build/scripts/registerSlashes.js"
   },
   "devDependencies": {
