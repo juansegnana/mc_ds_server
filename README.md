@@ -2,6 +2,8 @@
 
 Made with TS, Discord.js
 
+This bot was built to control a Minecraft FORGE Server. Using V1.18.2 
+
 ## Commands
 
 Install dependencies

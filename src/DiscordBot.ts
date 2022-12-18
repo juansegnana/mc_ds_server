@@ -5,7 +5,6 @@ import { Client, Collection, Events, GatewayIntentBits } from "discord.js";
 
 import { Command } from "./types";
 import updateBotPresence from "./helpers/updateBotPresence";
-// import startCronJobs from "./jobs";
 
 const BOT_TOKEN = process.env.DISCORD_BOT_TOKEN;
 const adminUserIds: string[] = (process.env.ADMIN_USER_IDS ?? "")
@@ -28,7 +27,6 @@ class DiscordClient extends Client {
 
 // Create a new client instance
 const client = new DiscordClient();
-
 client.commands = new Collection();
 
 const commandsPath = path.join(__dirname, "./", "commands");
@@ -89,6 +87,7 @@ client.on(Events.InteractionCreate, async (interaction) => {
         interaction.commandName
       }". Details: "${JSON.stringify(error)}"`
     );
+
     await interaction.reply({
       content: `Hubo un error ejecutando el comando! Detalles: "${JSON.stringify(
         error
@@ -100,4 +99,3 @@ client.on(Events.InteractionCreate, async (interaction) => {
 
 // Log in to Discord with your client's token
 client.login(BOT_TOKEN);
-// startCronJobs(client);

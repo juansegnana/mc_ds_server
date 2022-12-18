@@ -1,15 +1,21 @@
 import Consumer from "./Consumer";
 
 import {
-  Attributes,
+  FileAttributes,
+  ICompressFileResponse,
   IFileList,
+  IFileToDownloadResponse,
   IServerDetails,
   IServerResources,
 } from "./types";
 
 export type TServerState = "start" | "stop" | "restart" | "kill";
 
-type TServerCurrentState = Attributes["current_state"];
+type TServerCurrentState = FileAttributes["current_state"];
+
+interface IListModsProps {
+  sortAlphabetically?: boolean;
+}
 
 class Server {
   apiKey: string;
@@ -115,14 +121,77 @@ class Server {
   }
 
   // Backup
-  // async backupWorld(): Promise<boolean> {
-  //   const fileUploaded = await this.axios.post(`client/servers/${this.serverId}/files/compress`, {
-  //     root: "/",
-  //     files: ["world"],
-  //   });
+  async backupWorld(): Promise<{ downloadUrl: string; filePath?: string }> {
+    console.log("Starting world backup...");
 
-  //   return true;
-  // }
+    const { data: fileCompressed } =
+      await this.axios.post<ICompressFileResponse>(
+        `client/servers/${this.serverId}/files/compress`,
+        {
+          root: "/",
+          files: ["world"],
+        }
+      );
+
+    if (!fileCompressed) {
+      throw new Error("No data returned from compress world file!");
+    }
+
+    const pathEncoded = encodeURIComponent(`${fileCompressed.attributes.name}`);
+    console.log(`pathEncoded: ${pathEncoded}`);
+
+    const { data: fileToDownload } =
+      await this.axios.get<IFileToDownloadResponse>(
+        `client/servers/${this.serverId}/files/download?file=${pathEncoded}`
+      );
+    const downloadUrl = fileToDownload.attributes.url;
+
+    if (!downloadUrl) {
+      throw new Error("No download url returned from compress world file!");
+    }
+
+    if (!!process.env.RAILWAY_ENVIRONMENT) {
+      return { downloadUrl };
+    }
+
+    const filePath = await this.axios.downloadFile(
+      fileCompressed.attributes.name,
+      downloadUrl
+    );
+    console.log(`File path is ${filePath}`);
+
+    // TODO: Delete older files if > 10 backups
+    // const { status } = await this.axios.post(
+    //   `client/servers/${this.serverId}/files/delete`,
+    //   {
+    //     root: "/",
+    //     files: [pathEncoded],
+    //   }
+    // );
+
+    // if (status !== 204) {
+    //   console.log(
+    //     `[mc-server] Failed to delete file from server! File: "${pathEncoded}"`
+    //   );
+    // }
+
+    return { filePath, downloadUrl };
+  }
+
+  async listMods(sortAlphabetically = true): Promise<string[]> {
+    const { data: filesArr } = await this.axios.get<IFileList>(
+      `client/servers/${this.serverId}/files/list?directory=%2Fmods`
+    );
+
+    if (!filesArr || !filesArr?.data || !filesArr?.data?.length) {
+      throw new Error("No data returned from mod list!");
+    }
+
+    const modList = filesArr.data.map((file) => file.attributes.name);
+    return sortAlphabetically
+      ? modList.sort((a, b) => a.localeCompare(b))
+      : modList;
+  }
 }
 
 export default Server;
