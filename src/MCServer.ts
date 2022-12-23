@@ -1,4 +1,5 @@
 import Consumer from "./Consumer";
+import Client from "ssh2-sftp-client";
 
 import {
   FileAttributes,
@@ -195,3 +196,63 @@ class Server {
 }
 
 export default Server;
+
+interface SFTPConfig {
+  host: string;
+  port: number;
+  username: string;
+  password: string;
+}
+
+export class SFTPClient {
+  private sftp: Client;
+  private credentials: SFTPConfig;
+
+  constructor() {
+    this.sftp = new Client();
+    const sftpPort = process.env.SFTP_PORT;
+    const sftpLink = process.env.SFTP_LINK;
+    const sftpUser = process.env.SFTP_USERNAME;
+    const sftpPass = process.env.SFTP_PASSWORD;
+
+    if (!sftpPort || !sftpLink || !sftpUser || !sftpPass) {
+      throw new Error("Missing SFTP environment variables");
+    }
+
+    this.credentials = {
+      host: sftpLink,
+      port: +sftpPort,
+      username: sftpUser,
+      password: sftpPass,
+    };
+  }
+  async connect() {
+    console.log("Connecting to SFTP server...");
+    console.log("credentials?", this.credentials);
+
+    await this.sftp.connect(this.credentials);
+  }
+  // const data = await sftp.list("/world");
+  // console.log(data, `the data info: ${data}`);
+  async disconnect() {
+    await this.sftp.end();
+  }
+
+  async compressFile(filePath: string) {
+    // const data = await this.sftp.list("/world");
+    // console.log(data, `the data info: ${data}`);
+    this.sftp.(`tar -czvf /path/to/compressed/file.tar.gz /path/to/folder`, { cwd: '/path/to/folder' }).then((result) => {
+      console.log(result);
+    });
+  }
+
+  // TODO:
+  // Compress `/world` folder
+  // Download the compressed file to `/temp` folder
+  // Upload the compressed file to Cloudinary
+  // Delete the compressed file from `/temp` folder
+  // Return the Cloudinary file download URL
+
+  //   await sftp.end();
+  // }
+}
