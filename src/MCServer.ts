@@ -1,5 +1,13 @@
 import Consumer from "./Consumer";
 import Client from "ssh2-sftp-client";
+import archiver from "archiver";
+import {
+  DeleteObjectCommand,
+  ListObjectsCommand,
+  PutObjectCommand,
+  PutObjectCommandOutput,
+  S3Client,
+} from "@aws-sdk/client-s3";
 
 import {
   FileAttributes,
@@ -9,6 +17,18 @@ import {
   IServerDetails,
   IServerResources,
 } from "./types";
+
+import path from "path";
+
+import {
+  createReadStream,
+  createWriteStream,
+  mkdirSync,
+  mkdtempSync,
+  rmdirSync,
+  unlinkSync,
+} from "fs";
+import { mkdir, unlink } from "fs/promises";
 
 export type TServerState = "start" | "stop" | "restart" | "kill";
 
@@ -238,21 +258,129 @@ export class SFTPClient {
     await this.sftp.end();
   }
 
-  async compressFile(filePath: string) {
-    // const data = await this.sftp.list("/world");
-    // console.log(data, `the data info: ${data}`);
-    this.sftp.(`tar -czvf /path/to/compressed/file.tar.gz /path/to/folder`, { cwd: '/path/to/folder' }).then((result) => {
-      console.log(result);
+  async downloadFolder(serverFolderPath: string = "/world") {
+    console.log("starting download and upload to cloudinary...");
+    // const backupDate = new Date().toISOString();
+    const temporalFolder = path.join(__dirname, "..", "temp");
+    const backupTempFolderPath = mkdtempSync(
+      path.join(temporalFolder, `world-`)
+    );
+
+    console.log("Downloading world folder from SFTP server...");
+    await this.connect();
+    await this.sftp.downloadDir(serverFolderPath, backupTempFolderPath, {
+      useFastget: true,
     });
+    await this.disconnect();
+    console.log("World folder downloaded from SFTP server!");
+
+    console.log("Compressing world folder...");
+    // Compress the downloaded folder as a zip archive
+    const archive = archiver("zip", { zlib: { level: 9 } });
+    console.log("2");
+    //on stream closed we can end the request
+    archive.on("end", function () {
+      console.log("Archive wrote %d bytes", archive.pointer());
+    });
+    console.log("3");
+    archive.directory(backupTempFolderPath, false);
+    console.log("4");
+    const backupZipFile = path.join(
+      temporalFolder,
+      `world-${new Date().getUTCFullYear()}.zip`
+    );
+    console.log("5");
+    archive.pipe(createWriteStream(backupZipFile));
+    console.log("6");
+    await archive.finalize();
+    console.log("7");
+    console.log("World folder compressed!");
+
+    // const cloudinaryOptions = {
+    //   use_filename: true,
+    //   unique_filename: false,
+    //   overwrite: true,
+    // };
+    // TODO UPLOAD
+    try {
+      // format current date to YYYY-MM-DD_HH-mm
+      const backupDate = new Date()
+        .toISOString()
+        .replace(/:/g, "-")
+        .replace("T", "_")
+        .split(".")[0];
+
+      // const fileStream = createReadStream(backupZipFile);
+      // Upload the zip archive to Cloudinary
+      // result = await cloudinary.uploader.upload_large(backupZipFile, {
+      //   public_id: `backups_mc_2022/backup.zip`,
+      //   resource_type: "raw",
+      //   use_filename: true,
+      // });
+      // console.log(
+      //   `Folder zip uploaded to Cloudinary. Results: ${result.secure_url}\n`,
+      //   result
+      // );
+    } catch (error) {
+      console.log("Error uploading zip to Cloudinary", error);
+    }
+
+    console.log("Deleting temporary files...");
+    // Delete temporary files
+    rmdirSync(backupTempFolderPath, { recursive: true });
+    unlinkSync(backupZipFile);
+    console.log("Temporary files deleted!");
+
+    // return result;
   }
 
-  // TODO:
-  // Compress `/world` folder
-  // Download the compressed file to `/temp` folder
-  // Upload the compressed file to Cloudinary
-  // Delete the compressed file from `/temp` folder
-  // Return the Cloudinary file download URL
+  async uploadToDatabase(
+    zipPath = path.join(__dirname, "..", "temp", "world-2022.zip")
+  ) {
+    const client = new S3Client({ region: "sa-east-1" });
 
-  //   await sftp.end();
-  // }
+    // List last 10 objects in the bucket
+    const listCommand = new ListObjectsCommand({
+      Bucket: "mc-js-backups",
+    });
+
+    const listData = await client.send(listCommand);
+    console.log("Success", listData);
+
+    // If there is more than 10 objects with `world` key, delete the oldest one
+    if (listData.Contents?.length && listData.Contents.length > 10) {
+      const worldObjects = listData.Contents.filter((object) =>
+        object.Key?.includes("world")
+      );
+      console.log("There is more than 10 objects, deleting the oldest one");
+      const oldestObject = worldObjects[0];
+      console.log("Deleting oldest object", oldestObject.Key);
+      const deleteCommand = new DeleteObjectCommand({
+        Bucket: "mc-js-backups",
+        Key: oldestObject.Key,
+      });
+
+      const deleteData = await client.send(deleteCommand);
+      console.log("Success", deleteData);
+    } else {
+      console.log("There is less than 10 world backups");
+    }
+
+    const command = new PutObjectCommand({
+      Bucket: "mc-js-backups",
+      Key: `world-${new Date().toISOString()}.zip`,
+      Body: createReadStream(zipPath),
+    });
+
+    let data: PutObjectCommandOutput | null = null;
+
+    try {
+      data = await client.send(command);
+      console.log("Success", data);
+    } catch (err) {
+      console.log("Error", err);
+    }
+
+    return data;
+  }
 }
