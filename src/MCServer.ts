@@ -3,11 +3,14 @@ import Client from "ssh2-sftp-client";
 import archiver from "archiver";
 import {
   DeleteObjectCommand,
+  GetObjectCommand,
   ListObjectsCommand,
   PutObjectCommand,
   PutObjectCommandOutput,
   S3Client,
 } from "@aws-sdk/client-s3";
+
+import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 
 import {
   FileAttributes,
@@ -181,21 +184,6 @@ class Server {
     );
     console.log(`File path is ${filePath}`);
 
-    // TODO: Delete older files if > 10 backups
-    // const { status } = await this.axios.post(
-    //   `client/servers/${this.serverId}/files/delete`,
-    //   {
-    //     root: "/",
-    //     files: [pathEncoded],
-    //   }
-    // );
-
-    // if (status !== 204) {
-    //   console.log(
-    //     `[mc-server] Failed to delete file from server! File: "${pathEncoded}"`
-    //   );
-    // }
-
     return { filePath, downloadUrl };
   }
 
@@ -260,7 +248,7 @@ export class SFTPClient {
 
   async downloadFolder(serverFolderPath: string = "/world") {
     console.log("starting download and upload to cloudinary...");
-    // const backupDate = new Date().toISOString();
+
     const temporalFolder = path.join(__dirname, "..", "temp");
     const backupTempFolderPath = mkdtempSync(
       path.join(temporalFolder, `world-`)
@@ -275,15 +263,16 @@ export class SFTPClient {
     console.log("World folder downloaded from SFTP server!");
 
     console.log("Compressing world folder...");
-    // Compress the downloaded folder as a zip archive
+
     const archive = archiver("zip", { zlib: { level: 9 } });
     console.log("2");
-    //on stream closed we can end the request
+
     archive.on("end", function () {
       console.log("Archive wrote %d bytes", archive.pointer());
     });
     console.log("3");
     archive.directory(backupTempFolderPath, false);
+
     console.log("4");
     const backupZipFile = path.join(
       temporalFolder,
@@ -296,33 +285,11 @@ export class SFTPClient {
     console.log("7");
     console.log("World folder compressed!");
 
-    // const cloudinaryOptions = {
-    //   use_filename: true,
-    //   unique_filename: false,
-    //   overwrite: true,
-    // };
     // TODO UPLOAD
     try {
-      // format current date to YYYY-MM-DD_HH-mm
-      const backupDate = new Date()
-        .toISOString()
-        .replace(/:/g, "-")
-        .replace("T", "_")
-        .split(".")[0];
-
-      // const fileStream = createReadStream(backupZipFile);
-      // Upload the zip archive to Cloudinary
-      // result = await cloudinary.uploader.upload_large(backupZipFile, {
-      //   public_id: `backups_mc_2022/backup.zip`,
-      //   resource_type: "raw",
-      //   use_filename: true,
-      // });
-      // console.log(
-      //   `Folder zip uploaded to Cloudinary. Results: ${result.secure_url}\n`,
-      //   result
-      // );
+      await this.uploadToDatabase(backupZipFile);
     } catch (error) {
-      console.log("Error uploading zip to Cloudinary", error);
+      console.log("Error uploading zip to DB", error);
     }
 
     console.log("Deleting temporary files...");
@@ -330,7 +297,7 @@ export class SFTPClient {
     rmdirSync(backupTempFolderPath, { recursive: true });
     unlinkSync(backupZipFile);
     console.log("Temporary files deleted!");
-
+    // TODO: return download url
     // return result;
   }
 
@@ -339,7 +306,6 @@ export class SFTPClient {
   ) {
     const client = new S3Client({ region: "sa-east-1" });
 
-    // List last 10 objects in the bucket
     const listCommand = new ListObjectsCommand({
       Bucket: "mc-js-backups",
     });
@@ -377,10 +343,60 @@ export class SFTPClient {
     try {
       data = await client.send(command);
       console.log("Success", data);
+      console.log(`Se subio con etag: ${data.ETag}`);
     } catch (err) {
       console.log("Error", err);
     }
 
     return data;
+  }
+
+  async getDownloadLink() {
+    // TODO: only list last 10 objects in the bucket and get its download link
+    const client = new S3Client({ region: "sa-east-1" });
+    const listCommand = new ListObjectsCommand({
+      Bucket: "mc-js-backups",
+    });
+
+    const listData = await client.send(listCommand);
+    console.log("Success", listData);
+
+    // Get download link for each object
+    const worldObjects = listData.Contents?.filter((object) =>
+      object.Key?.includes("world")
+    );
+
+    if (!worldObjects) return [];
+
+    const downloadLinks: { key: string; url: string }[] = [];
+
+    for (const object of worldObjects) {
+      async function getSignedFileUrl(
+        fileName: string,
+        bucket: string,
+        expiresIn: number
+      ) {
+        const command = new GetObjectCommand({
+          Bucket: bucket,
+          Key: fileName,
+        });
+
+        return await getSignedUrl(client, command, { expiresIn });
+      }
+
+      const signedUrl = await getSignedFileUrl(
+        object.Key || "world.zip",
+        "mc-js-backups",
+        // 5 minutes
+        60 * 60 * 5
+      );
+
+      downloadLinks.push({
+        key: object.Key || "world.zip",
+        url: signedUrl,
+      });
+    }
+
+    return downloadLinks;
   }
 }
