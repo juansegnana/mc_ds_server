@@ -352,7 +352,6 @@ export class SFTPClient {
   }
 
   async getDownloadLink() {
-    // TODO: only list last 10 objects in the bucket and get its download link
     const client = new S3Client({ region: "sa-east-1" });
     const listCommand = new ListObjectsCommand({
       Bucket: "mc-js-backups",
@@ -368,7 +367,8 @@ export class SFTPClient {
 
     if (!worldObjects) return [];
 
-    const downloadLinks: { key: string; url: string }[] = [];
+    const downloadLinks: { key: string; url: string; lastModifiedBy: Date }[] =
+      [];
 
     for (const object of worldObjects) {
       async function getSignedFileUrl(
@@ -388,12 +388,13 @@ export class SFTPClient {
         object.Key || "world.zip",
         "mc-js-backups",
         // 5 minutes
-        60 * 60 * 5
+        60 * 1 * 5
       );
 
       downloadLinks.push({
         key: object.Key || "world.zip",
         url: signedUrl,
+        lastModifiedBy: object.LastModified || new Date(),
       });
     }
 
