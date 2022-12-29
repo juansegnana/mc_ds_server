@@ -14,6 +14,7 @@ import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 
 import {
   FileAttributes,
+  IBackupList,
   ICompressFileResponse,
   IFileList,
   IFileToDownloadResponse,
@@ -144,7 +145,9 @@ class Server {
     return status !== 400;
   }
 
-  // Backup
+  /**
+   * @deprecated - Use `startWorldBackup` instead
+   */
   async backupWorld(): Promise<{ downloadUrl: string; filePath?: string }> {
     console.log("Starting world backup...");
 
@@ -201,6 +204,33 @@ class Server {
       ? modList.sort((a, b) => a.localeCompare(b))
       : modList;
   }
+
+  // Backup
+  async startWorldBackup(): Promise<IBackupList[]> {
+    // Stop auto-saving if server is running
+    const serverState = await this.getServerState();
+    const isServerRunning = serverState === "running";
+    if (isServerRunning) {
+      // Send command set auto-save off
+      await this.sendCommand("say Comenzando backup...");
+      await this.sendCommand("save-off");
+      await this.sendCommand("save-all");
+
+      // Wait for server to save
+      await new Promise((resolve) => setTimeout(resolve, 5000));
+    }
+
+    // Backup world
+    const sftp = new SFTPClient();
+    const response = await sftp.downloadFolder();
+
+    if (isServerRunning) {
+      await this.sendCommand("save-on");
+      await this.sendCommand("say Backup completado!");
+    }
+
+    return response;
+  }
 }
 
 export default Server;
@@ -236,18 +266,17 @@ export class SFTPClient {
   }
   async connect() {
     console.log("Connecting to SFTP server...");
-    console.log("credentials?", this.credentials);
+    // console.log("credentials?", this.credentials);
 
     await this.sftp.connect(this.credentials);
   }
-  // const data = await sftp.list("/world");
-  // console.log(data, `the data info: ${data}`);
+
   async disconnect() {
     await this.sftp.end();
   }
 
   async downloadFolder(serverFolderPath: string = "/world") {
-    console.log("starting download and upload to cloudinary...");
+    console.log("starting download and upload to DB...");
 
     const temporalFolder = path.join(__dirname, "..", "temp");
     const backupTempFolderPath = mkdtempSync(
@@ -265,27 +294,20 @@ export class SFTPClient {
     console.log("Compressing world folder...");
 
     const archive = archiver("zip", { zlib: { level: 9 } });
-    console.log("2");
 
     archive.on("end", function () {
       console.log("Archive wrote %d bytes", archive.pointer());
     });
-    console.log("3");
     archive.directory(backupTempFolderPath, false);
 
-    console.log("4");
     const backupZipFile = path.join(
       temporalFolder,
       `world-${new Date().getUTCFullYear()}.zip`
     );
-    console.log("5");
     archive.pipe(createWriteStream(backupZipFile));
-    console.log("6");
     await archive.finalize();
-    console.log("7");
     console.log("World folder compressed!");
 
-    // TODO UPLOAD
     try {
       await this.uploadToDatabase(backupZipFile);
     } catch (error) {
@@ -298,7 +320,7 @@ export class SFTPClient {
     unlinkSync(backupZipFile);
     console.log("Temporary files deleted!");
     // TODO: return download url
-    // return result;
+    return await this.getDownloadLink();
   }
 
   async uploadToDatabase(
@@ -342,7 +364,7 @@ export class SFTPClient {
 
     try {
       data = await client.send(command);
-      console.log("Success", data);
+      // console.log("Success", data);
       console.log(`Se subio con etag: ${data.ETag}`);
     } catch (err) {
       console.log("Error", err);
@@ -358,7 +380,7 @@ export class SFTPClient {
     });
 
     const listData = await client.send(listCommand);
-    console.log("Success", listData);
+    // console.log("Success", listData);
 
     // Get download link for each object
     const worldObjects = listData.Contents?.filter((object) =>
@@ -367,8 +389,7 @@ export class SFTPClient {
 
     if (!worldObjects) return [];
 
-    const downloadLinks: { key: string; url: string; lastModifiedBy: Date }[] =
-      [];
+    const downloadLinks: IBackupList[] = [];
 
     for (const object of worldObjects) {
       async function getSignedFileUrl(

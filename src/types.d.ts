@@ -175,3 +175,10 @@ enum Mode {
 enum Object {
   FileObject = "file_object",
 }
+
+// Backup
+export interface IBackupList {
+  key: string;
+  url: string;
+  lastModifiedBy: Date;
+}
