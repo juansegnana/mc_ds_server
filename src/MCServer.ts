@@ -27,9 +27,8 @@ import path from "path";
 import {
   createReadStream,
   createWriteStream,
-  mkdirSync,
   mkdtempSync,
-  rmdirSync,
+  rmSync,
   unlinkSync,
 } from "fs";
 import { mkdir, unlink } from "fs/promises";
@@ -316,7 +315,7 @@ export class SFTPClient {
 
     console.log("Deleting temporary files...");
     // Delete temporary files
-    rmdirSync(backupTempFolderPath, { recursive: true });
+    rmSync(backupTempFolderPath, { recursive: true });
     unlinkSync(backupZipFile);
     console.log("Temporary files deleted!");
     // TODO: return download url
@@ -339,7 +338,14 @@ export class SFTPClient {
     if (listData.Contents?.length && listData.Contents.length > 10) {
       const worldObjects = listData.Contents.filter((object) =>
         object.Key?.includes("world")
-      );
+      ).sort((a, b) => {
+        // Sort by last modified date (oldest first)
+        if (a.LastModified && b.LastModified) {
+          return a.LastModified.getTime() - b.LastModified.getTime();
+        }
+        return 0;
+      });
+
       console.log("There is more than 10 objects, deleting the oldest one");
       const oldestObject = worldObjects[0];
       console.log("Deleting oldest object", oldestObject.Key);
@@ -349,10 +355,11 @@ export class SFTPClient {
       });
 
       const deleteData = await client.send(deleteCommand);
-      console.log("Success", deleteData);
-    } else {
-      console.log("There is less than 10 world backups");
+      console.log("Data deleted - ", deleteData);
     }
+    // else {
+    //   console.log("There is less than 10 world backups");
+    // }
 
     const command = new PutObjectCommand({
       Bucket: "mc-js-backups",
@@ -364,10 +371,9 @@ export class SFTPClient {
 
     try {
       data = await client.send(command);
-      // console.log("Success", data);
-      console.log(`Se subio con etag: ${data.ETag}`);
+      console.log(`Uploaded with eTag: ${data.ETag}`);
     } catch (err) {
-      console.log("Error", err);
+      console.log("Error uploading file", err);
     }
 
     return data;
@@ -380,7 +386,6 @@ export class SFTPClient {
     });
 
     const listData = await client.send(listCommand);
-    // console.log("Success", listData);
 
     // Get download link for each object
     const worldObjects = listData.Contents?.filter((object) =>
