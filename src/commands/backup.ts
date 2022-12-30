@@ -11,20 +11,17 @@ const command: SlashCommand = {
     const server = new Server();
     const response = await server.startWorldBackup();
 
-    // Embed displaying each file with its link
+    const message = [
+      `Último backups del mundo. El link expira en 5 minutos!`,
+      `Archivo: ${response.key}`,
+      `[Link](${response.url})`,
+      `Subido a las ${response.lastModifiedBy.toLocaleString()}`,
+    ].join("\n");
+
     const embed = {
-      title: "Descargar backups",
-      description: "Backups de mundos. Los links expiran en 5 minutos.",
+      title: "Descargar backup",
+      description: message,
       color: 0x0099ff,
-      // sort from newest to oldest
-      fields: response
-        .sort((a, b) => b.lastModifiedBy.getTime() - a.lastModifiedBy.getTime())
-        .map((file) => {
-          return {
-            name: file.key,
-            value: `[Link de descarga](${file.url})`,
-          };
-        }),
       timestamp: new Date().toISOString(),
     };
 

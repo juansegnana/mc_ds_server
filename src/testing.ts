@@ -7,7 +7,7 @@ const main = async () => {
   // await sftp.connect();
   await sftp.downloadFolder("/world");
   // await sftp.uploadToDatabase();
-  const links = await sftp.getDownloadLink();
+  const links = await sftp.getAllDownloadLink();
   console.log("got links", links);
   // await sftp.disconnect();
 };

@@ -205,7 +205,7 @@ class Server {
   }
 
   // Backup
-  async startWorldBackup(): Promise<IBackupList[]> {
+  async startWorldBackup(): Promise<IBackupList> {
     // Stop auto-saving if server is running
     const serverState = await this.getServerState();
     const isServerRunning = serverState === "running";
@@ -274,7 +274,9 @@ export class SFTPClient {
     await this.sftp.end();
   }
 
-  async downloadFolder(serverFolderPath: string = "/world") {
+  async downloadFolder(
+    serverFolderPath: string = "/world"
+  ): Promise<IBackupList> {
     console.log("starting download and upload to DB...");
 
     const temporalFolder = path.join(__dirname, "..", "temp");
@@ -307,8 +309,16 @@ export class SFTPClient {
     await archive.finalize();
     console.log("World folder compressed!");
 
+    const fileUploaded: IBackupList = {
+      key: "",
+      lastModifiedBy: new Date(),
+      url: "",
+    };
+
     try {
-      await this.uploadToDatabase(backupZipFile);
+      const response = await this.uploadToDatabase(backupZipFile);
+      fileUploaded["key"] = response?.ETag?.replace(/"/g, "") || "";
+      fileUploaded["lastModifiedBy"] = new Date();
     } catch (error) {
       console.log("Error uploading zip to DB", error);
     }
@@ -318,8 +328,13 @@ export class SFTPClient {
     rmSync(backupTempFolderPath, { recursive: true });
     unlinkSync(backupZipFile);
     console.log("Temporary files deleted!");
-    // TODO: return download url
-    return await this.getDownloadLink();
+
+    const urlSigned = await this.getDownloadLink(fileUploaded["key"]);
+    fileUploaded["url"] = urlSigned;
+
+    return {
+      ...fileUploaded,
+    };
   }
 
   async uploadToDatabase(
@@ -357,9 +372,6 @@ export class SFTPClient {
       const deleteData = await client.send(deleteCommand);
       console.log("Data deleted - ", deleteData);
     }
-    // else {
-    //   console.log("There is less than 10 world backups");
-    // }
 
     const command = new PutObjectCommand({
       Bucket: "mc-js-backups",
@@ -379,43 +391,43 @@ export class SFTPClient {
     return data;
   }
 
-  async getDownloadLink() {
+  async getDownloadLink(fileName: string) {
     const client = new S3Client({ region: "sa-east-1" });
+
+    const signedUrl = await this.getSignedFileUrl({
+      bucket: "mc-js-backups",
+      client,
+      // 5 minutes
+      expiresIn: 60 * 1 * 5,
+      fileName,
+    });
+
+    return signedUrl;
+  }
+
+  async getAllDownloadLink() {
+    const client = new S3Client({ region: "sa-east-1" });
+
     const listCommand = new ListObjectsCommand({
       Bucket: "mc-js-backups",
     });
-
     const listData = await client.send(listCommand);
 
-    // Get download link for each object
-    const worldObjects = listData.Contents?.filter((object) =>
+    const worldObjects = (listData.Contents || []).filter((object) =>
       object.Key?.includes("world")
     );
-
     if (!worldObjects) return [];
 
     const downloadLinks: IBackupList[] = [];
 
     for (const object of worldObjects) {
-      async function getSignedFileUrl(
-        fileName: string,
-        bucket: string,
-        expiresIn: number
-      ) {
-        const command = new GetObjectCommand({
-          Bucket: bucket,
-          Key: fileName,
-        });
-
-        return await getSignedUrl(client, command, { expiresIn });
-      }
-
-      const signedUrl = await getSignedFileUrl(
-        object.Key || "world.zip",
-        "mc-js-backups",
+      const signedUrl = await this.getSignedFileUrl({
+        bucket: "mc-js-backups",
+        client,
         // 5 minutes
-        60 * 1 * 5
-      );
+        expiresIn: 60 * 1 * 5,
+        fileName: object.Key || "world.zip",
+      });
 
       downloadLinks.push({
         key: object.Key || "world.zip",
@@ -426,4 +438,25 @@ export class SFTPClient {
 
     return downloadLinks;
   }
+
+  async getSignedFileUrl({
+    bucket,
+    client,
+    expiresIn,
+    fileName,
+  }: IGetSignedUrl): Promise<string> {
+    const command = new GetObjectCommand({
+      Bucket: bucket,
+      Key: fileName,
+    });
+
+    return await getSignedUrl(client, command, { expiresIn });
+  }
+}
+
+interface IGetSignedUrl {
+  client: S3Client;
+  fileName: string;
+  bucket: string;
+  expiresIn: number;
 }
