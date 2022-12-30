@@ -9,13 +9,23 @@ const command: SlashCommand = {
   async execute(interaction) {
     await interaction.reply("Haciendo backup...");
     const server = new Server();
-    const response = await server.backupWorld();
+    const response = await server.startWorldBackup();
 
-    // If bot is in server, will responde with an URL to download the world
-    // else will send the file path where is located (if local).
-    const MESSAGE = `Se guardó el backup en el servidor. Descarga el archivo desde:\n${response.downloadUrl}`;
+    const message = [
+      `Último backups del mundo. El link expira en 5 minutos!`,
+      `Archivo: ${response.key}`,
+      `[Link](${response.url})`,
+      `Subido a las ${response.lastModifiedBy.toLocaleString()}`,
+    ].join("\n");
 
-    await interaction.editReply("```" + MESSAGE + "```");
+    const embed = {
+      title: "Descargar backup",
+      description: message,
+      color: 0x0099ff,
+      timestamp: new Date().toISOString(),
+    };
+
+    await interaction.editReply({ embeds: [embed] });
   },
 };
 
