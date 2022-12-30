@@ -12,10 +12,12 @@ const command: SlashCommand = {
     const response = await server.startWorldBackup();
 
     const message = [
-      `Último backups del mundo. El link expira en 5 minutos!`,
-      `Archivo: ${response.key}`,
-      `[Link](${response.url})`,
+      `*Último backup del mundo*. El link expira en _5 minutos_!`,
+      `---`,
+      `_Archivo_: ${response.key}`,
+      `*[Link](${response.url})*`,
       `Subido a las ${response.lastModifiedBy.toLocaleString()}`,
+      `---`,
     ].join("\n");
 
     const embed = {
@@ -25,7 +27,7 @@ const command: SlashCommand = {
       timestamp: new Date().toISOString(),
     };
 
-    await interaction.editReply({ embeds: [embed] });
+    await interaction.followUp({ embeds: [embed] });
   },
 };
 
