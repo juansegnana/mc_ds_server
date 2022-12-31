@@ -1,6 +1,6 @@
 import dotenv from "dotenv";
+import SFTPClient from "./SFTP";
 dotenv.config();
-import { SFTPClient } from "./MCServer";
 
 const main = async () => {
   const sftp = new SFTPClient();
