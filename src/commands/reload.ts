@@ -1,10 +1,11 @@
 import { SlashCommandBuilder } from "discord.js";
+import { ECommands } from "../commands";
 import handleServerChandeState from "../helpers/handleServerChangeState";
 import { SlashCommand } from "../types";
 
 const command: SlashCommand = {
   data: new SlashCommandBuilder()
-    .setName("reload")
+    .setName(ECommands.Reload)
     .setDescription(`Reiniciar servidor de MC`),
   async execute(interaction) {
     await interaction.reply("Recargando servidor...");

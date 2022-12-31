@@ -1,10 +1,11 @@
 import { EmbedBuilder, SlashCommandBuilder } from "discord.js";
+import { ECommands } from "../commands";
 import Server from "../MCServer";
 import { SlashCommand } from "../types";
 
 const command: SlashCommand = {
   data: new SlashCommandBuilder()
-    .setName("listar_mods")
+    .setName(ECommands.ListarMods)
     .setDescription(`Lista los mods disponibles en el Server`),
 
   async execute(interaction) {

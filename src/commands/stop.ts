@@ -1,10 +1,11 @@
 import { SlashCommandBuilder } from "discord.js";
+import { ECommands } from "../commands";
 import handleServerChandeState from "../helpers/handleServerChangeState";
 import { SlashCommand } from "../types";
 
 const command: SlashCommand = {
   data: new SlashCommandBuilder()
-    .setName("stop")
+    .setName(ECommands.Stop)
     .setDescription(`Apagar servidor de MC`),
   async execute(interaction) {
     await interaction.reply("Arrancando servidor...");

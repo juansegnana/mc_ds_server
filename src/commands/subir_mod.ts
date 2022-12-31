@@ -1,29 +1,32 @@
 import { SlashCommandBuilder } from "discord.js";
+import { ECommands } from "../commands";
 import Server from "../MCServer";
 import { SlashCommand } from "../types";
 
+const MOD_FILE_COMMAND = "mod_file";
 const command: SlashCommand = {
   data: new SlashCommandBuilder()
     .addAttachmentOption((option) =>
       option
-        .setName("mod_file")
+        .setName(MOD_FILE_COMMAND)
         .setDescription("Archivo del mod a subir, debe ser un .jar")
         .setRequired(true)
     )
-    .setName("subir_mod")
+    .setName(ECommands.SubirMod)
     .setDescription(`Subir un mod nuevo al servidor de MC`),
 
   async execute(interaction) {
     const server = new Server();
     // Get attachment and upload to server
-    const attachment = interaction.options.get("mod_file");
+    const attachment = interaction.options.get(MOD_FILE_COMMAND);
     const attachmentObj = attachment?.attachment;
 
     if (!attachment || !attachmentObj) {
       await interaction.reply("No se pudo subir el mod :(");
       return;
     }
-    const fileName = attachmentObj.name || "mod.jar";
+    const fileName =
+      attachmentObj.name || `mod-${new Date().toISOString()}.jar`;
     const fileUrl = attachmentObj.url || "";
     // await interaction.reply(`Subiendo archivo ${fileName}...`);
     await interaction.deferReply();

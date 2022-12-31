@@ -1,10 +1,11 @@
 import { SlashCommandBuilder } from "discord.js";
+import { ECommands } from "../commands";
 import Server from "../MCServer";
 import { SlashCommand } from "../types";
 
 const command: SlashCommand = {
   data: new SlashCommandBuilder()
-    .setName("backup")
+    .setName(ECommands.Backup)
     .setDescription(`Hace un backup del mundo de MC`),
   async execute(interaction) {
     await interaction.reply("Haciendo backup...");

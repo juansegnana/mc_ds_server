@@ -1,9 +1,10 @@
 import { SlashCommandBuilder } from "discord.js";
+import { ECommands } from "../commands";
 import { SlashCommand } from "../types";
 
 const command: SlashCommand = {
   data: new SlashCommandBuilder()
-    .setName("ping")
+    .setName(ECommands.Ping)
     .setDescription("Shows the bot's ping"),
   async execute(interaction) {
     await interaction.reply(

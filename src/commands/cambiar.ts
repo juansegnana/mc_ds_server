@@ -1,11 +1,11 @@
-import { SlashCommandBuilder } from "discord.js";
-import handleServerChandeState from "../helpers/handleServerChangeState";
-import Server, { TServerState } from "../MCServer";
+import { ECommands } from "../commands";
 import { SlashCommand } from "../types";
+import { SlashCommandBuilder } from "discord.js";
+import Server from "../MCServer";
 
 const command: SlashCommand = {
   data: new SlashCommandBuilder()
-    .setName("manejar")
+    .setName(ECommands.Cambiar)
     .setDescription(`Configura el estado del server`)
     .addStringOption((option) =>
       option
