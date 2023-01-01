@@ -136,7 +136,7 @@ class SFTPClient {
     console.log("Success", listData);
 
     // If there is more than 10 objects with `world` key, delete the oldest one
-    if (listData.Contents?.length && listData.Contents.length > 10) {
+    if (listData.Contents?.length && listData.Contents.length >= 8) {
       const worldObjects = listData.Contents.filter((object) =>
         object.Key?.includes("world")
       ).sort((a, b) => {
